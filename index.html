@@ -2,7 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Responsive Multi-Touch Tone Generator MVP with Modes</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>Multi-Touch Tone Generator with Modes</title>
+    <meta name="author" content="beardordie">
+    <meta name="description" content="Responsive Multi-Touch Tone Generator with Modes">
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="player" />
+    <meta name="twitter:site" content="@DevHobbyist" />
+    <meta name="twitter:title" content="Multi-Touch Tone Generator" />
+    <meta name="twitter:description" content="This is a Multi-Touch Tone Generator Twitter/X player card." />
+    <meta name="twitter:image" content="https://beardordie.github.io/tonegenerator/tonegenerator.png">
+    <meta name="twitter:player" content="https://beardordie.github.io/tonegenerator/">
+    <meta name="twitter:player:width" content="480" />
+    <meta name="twitter:player:height" content="480" />
+
+    <meta name="og:site_name" content="DevHobbyist">
+    <meta name="og:title" content="Multi-Touch Tone Generator" />
+    <meta name="og:description" content="It's a tone generator that operates via multi-touch." />
+    <meta name="og:url" content="https://beardordie.github.io/tonegenerator/">
+    <meta name="og:type" content="website">
+    <meta name="og:image" content="https://beardordie.github.io/tonegenerator/tonegenerator.png">
     <!-- Load Three.js from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- Load Tone.js from CDN -->
@@ -29,6 +48,18 @@
         align-items: center;
         justify-content: center;
       }
+      #instructions {
+        position: absolute;
+        padding-bottom:8em;
+        font-family: 'Roboto', sans-serif;
+        font-weight: 900; /* Bold weight */
+        font-size: 20pt;
+        letter-spacing: 0.02em;
+        color:#eee;
+        pointer-events: none;
+        user-select: none;
+        text-align: center;
+      }
       #modename{
         position: absolute;
         margin: 0;
@@ -40,13 +71,14 @@
         pointer-events: none;
         user-select: none;
         text-transform: uppercase;
+        text-align: center;
       }
     </style>
     
   </head>
   <body>
     <!-- Container will fill the available iframe space -->
-    <div id="container"><span id="modename" tabindex="-1">Mode: </span></div>
+    <div id="container"><span id="instructions">This is Interactive.<br>Multi-touch to generate tones.</span><span id="modename" tabindex="-1">Mode: </span></div>
     <script>
       // --- Mode Enum ---
       const Modes = {
