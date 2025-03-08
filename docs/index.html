@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Responsive Multi-Touch Tone Generator MVP with Modes</title>
+    <!-- Load Three.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Load Tone.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.js"></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        overflow: hidden;
+        height: 100%;
+      }
+      body {
+        /* Maui-inspired gradient */
+        background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Container will fill the available iframe space -->
+    <div id="container"></div>
+    <script>
+      // --- Mode Enum ---
+      const Modes = {
+        SINE: {
+          name: "Sine",
+          createOscillator: function(freq) {
+            return new Tone.Oscillator(freq, "sine");
+          }
+        },
+        SQUARE: {
+          name: "Square",
+          createOscillator: function(freq) {
+            return new Tone.Oscillator(freq, "square");
+          }
+        },
+        SAWTOOTH: {
+          name: "Sawtooth",
+          createOscillator: function(freq) {
+            return new Tone.Oscillator(freq, "sawtooth");
+          }
+        },
+        TRIANGLE: {
+          name: "Triangle",
+          createOscillator: function(freq) {
+            return new Tone.Oscillator(freq, "triangle");
+          }
+        },
+        MODULATED: {
+          name: "Modulated",
+          createOscillator: function(freq) {
+            const osc = new Tone.Oscillator({
+              frequency: freq, 
+              type: "sine"
+            });
+        
+            const lfo = new Tone.LFO({
+              frequency: 25,   // Vibrato speed
+              amplitude: 0.2,    // Normalized depth (0 to 1)
+              min: freq - 1200, // Lower range
+              max: freq + 800   // Upper range
+            }).start();
+        
+            lfo.connect(osc.frequency);
+            osc._lfo = lfo;
+        
+            return osc;
+          }
+        },
+
+        FM: {
+          name: "FM",
+          createOscillator: function(freq) {
+            // Use Tone.FMOscillator for FM synthesis
+            const fmo = new Tone.FMOscillator({
+              frequency: freq,
+              harmonicity: 3,
+              modulationIndex: 10,
+              type: "sine"
+            });
+            return fmo;
+          }
+        }
+      };
+
+      // Randomly select a mode at page load
+      const modeKeys = Object.keys(Modes);
+      const selectedModeKey = modeKeys[4];
+      //const selectedModeKey = modeKeys[Math.floor(Math.random() * modeKeys.length)];
+      const selectedMode = Modes[selectedModeKey];
+      console.log("Selected mode:", selectedMode.name);
+      
+
+      // --- Global Responsive Setup ---
+      let canvasSize;
+      const container = document.getElementById("container");
+
+      // Determine the maximum square size available in the container
+      function updateCanvasSize() {
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        canvasSize = Math.min(w, h);
+      }
+      updateCanvasSize();
+
+      // --- Three.js Scene Setup ---
+      const scene = new THREE.Scene();
+      // Create an orthographic camera that uses the dynamic canvasSize
+      const camera = new THREE.OrthographicCamera(0, canvasSize, canvasSize, 0, -10, 10);
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(canvasSize, canvasSize);
+      container.appendChild(renderer.domElement);
+
+      // --- Global Variables for Touch State ---
+      const activeTouches = {};
+      let mouseActive = null;
+
+      // --- Visual Indicator: Glowing Sprite ---
+      function createTouchTexture() {
+        const size = 128;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext("2d");
+        const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+        gradient.addColorStop(0, "rgba(255, 154, 158, 1)");
+        gradient.addColorStop(1, "rgba(255, 154, 158, 0)");
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, size, size);
+        return new THREE.CanvasTexture(canvas);
+      }
+
+      const touchTexture = createTouchTexture();
+
+      function createIndicator() {
+        const spriteMaterial = new THREE.SpriteMaterial({
+          map: touchTexture,
+          transparent: true
+        });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(30, 30, 1);
+        return sprite;
+      }
+
+      // --- Animation Loop ---
+      function animate() {
+        requestAnimationFrame(animate);
+        const time = Date.now() * 0.005;
+        const pulseScale = 1 + 0.2 * Math.sin(time);
+
+        // Update scale of active touch indicators
+        for (let key in activeTouches) {
+          if (activeTouches[key].indicator) {
+            activeTouches[key].indicator.scale.set(30 * pulseScale, 30 * pulseScale, 1);
+          }
+        }
+        if (mouseActive && mouseActive.indicator) {
+          mouseActive.indicator.scale.set(30 * pulseScale, 30 * pulseScale, 1);
+        }
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      // --- Audio Helper Functions ---
+      function getFrequency(x) {
+        const minFreq = 200;
+        const maxFreq = 1000;
+        return minFreq + (x / canvasSize) * (maxFreq - minFreq);
+      }
+
+      function getRelativeX(clientX) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        let x = clientX - rect.left;
+        return Math.max(0, Math.min(canvasSize, x));
+      }
+
+      // Helper to create an oscillator using the selected mode
+      function createOscillatorForMode(freq) {
+        const osc = selectedMode.createOscillator(freq);
+        return osc;
+      }
+
+      // --- Multi-Touch Handling (audio/touch logic unchanged except oscillator creation) ---
+      function startTouch(touch) {
+        Tone.start();
+        const x = getRelativeX(touch.clientX);
+        const freq = getFrequency(x);
+        const oscillator = createOscillatorForMode(freq);
+        // Use a gain node for volume control
+        const gainNode = new Tone.Gain(0.2).toDestination();
+        oscillator.connect(gainNode);
+        oscillator.start();
+
+        const indicator = createIndicator();
+        indicator.position.set(x, canvasSize / 2, 0);
+        scene.add(indicator);
+
+        activeTouches[touch.identifier] = { oscillator, indicator };
+      }
+
+      function updateTouch(touch) {
+        const x = getRelativeX(touch.clientX);
+        const freq = getFrequency(x);
+        if (activeTouches[touch.identifier]) {
+          activeTouches[touch.identifier].oscillator.frequency.value = freq;
+          activeTouches[touch.identifier].indicator.position.x = x;
+        }
+      }
+
+      function endTouch(touch) {
+        if (activeTouches[touch.identifier]) {
+          activeTouches[touch.identifier].oscillator.stop();
+          // If the oscillator has an LFO (as in the MODULATED mode), dispose of it too.
+          if (activeTouches[touch.identifier].oscillator._lfo) {
+            activeTouches[touch.identifier].oscillator._lfo.dispose();
+          }
+          activeTouches[touch.identifier].oscillator.dispose();
+          scene.remove(activeTouches[touch.identifier].indicator);
+          delete activeTouches[touch.identifier];
+        }
+      }
+
+      renderer.domElement.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          startTouch(e.changedTouches[i]);
+        }
+      });
+
+      renderer.domElement.addEventListener("touchmove", (e) => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          updateTouch(e.changedTouches[i]);
+        }
+      });
+
+      renderer.domElement.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          endTouch(e.changedTouches[i]);
+        }
+      });
+
+      renderer.domElement.addEventListener("touchcancel", (e) => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          endTouch(e.changedTouches[i]);
+        }
+      });
+
+      // --- Mouse Support for Single Pointer ---
+      function startMouse(clientX) {
+        Tone.start();
+        const x = getRelativeX(clientX);
+        const freq = getFrequency(x);
+        const oscillator = createOscillatorForMode(freq);
+        const gainNode = new Tone.Gain(0.2).toDestination();
+        oscillator.connect(gainNode);
+        oscillator.start();
+
+        const indicator = createIndicator();
+        indicator.position.set(x, canvasSize / 2, 0);
+        scene.add(indicator);
+
+        mouseActive = { oscillator, indicator };
+      }
+
+      function updateMouse(clientX) {
+        const x = getRelativeX(clientX);
+        const freq = getFrequency(x);
+        if (mouseActive) {
+          mouseActive.oscillator.frequency.value = freq;
+          mouseActive.indicator.position.x = x;
+        }
+      }
+
+      function endMouse() {
+        if (mouseActive) {
+          mouseActive.oscillator.stop();
+          if (mouseActive.oscillator._lfo) {
+            mouseActive.oscillator._lfo.dispose();
+          }
+          mouseActive.oscillator.dispose();
+          scene.remove(mouseActive.indicator);
+          mouseActive = null;
+        }
+      }
+
+      renderer.domElement.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        startMouse(e.clientX);
+      });
+
+      renderer.domElement.addEventListener("mousemove", (e) => {
+        e.preventDefault();
+        if (mouseActive) {
+          updateMouse(e.clientX);
+        }
+      });
+
+      renderer.domElement.addEventListener("mouseup", (e) => {
+        e.preventDefault();
+        endMouse();
+      });
+
+      renderer.domElement.addEventListener("mouseleave", (e) => {
+        e.preventDefault();
+        endMouse();
+      });
+
+      // --- Responsive Resize Handling ---
+      function onWindowResize() {
+        updateCanvasSize();
+        renderer.setSize(canvasSize, canvasSize);
+        camera.left = 0;
+        camera.right = canvasSize;
+        camera.top = canvasSize;
+        camera.bottom = 0;
+        camera.updateProjectionMatrix();
+      }
+
+      window.addEventListener("resize", onWindowResize);
+    </script>
+  </body>
+</html>
