@@ -7,6 +7,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- Load Tone.js from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
     <style>
       html,
       body {
@@ -28,11 +29,24 @@
         align-items: center;
         justify-content: center;
       }
+      #modename{
+        position: absolute;
+        margin: 0;
+        font-family: 'Roboto', sans-serif;
+        font-weight: 900; /* Bold weight */
+        font-size: 30pt;
+        letter-spacing: 0.02em;
+        color:#353535;
+        pointer-events: none;
+        user-select: none;
+        text-transform: uppercase;
+      }
     </style>
+    
   </head>
   <body>
     <!-- Container will fill the available iframe space -->
-    <div id="container"></div>
+    <div id="container"><span id="modename" tabindex="-1">Mode: </span></div>
     <script>
       // --- Mode Enum ---
       const Modes = {
@@ -60,27 +74,6 @@
             return new Tone.Oscillator(freq, "triangle");
           }
         },
-        MODULATED: {
-          name: "Modulated",
-          createOscillator: function(freq) {
-            const osc = new Tone.Oscillator({
-              frequency: freq, 
-              type: "sine"
-            });
-        
-            const lfo = new Tone.LFO({
-              frequency: 25,   // Vibrato speed
-              amplitude: 0.2,    // Normalized depth (0 to 1)
-              min: freq - 1200, // Lower range
-              max: freq + 800   // Upper range
-            }).start();
-        
-            lfo.connect(osc.frequency);
-            osc._lfo = lfo;
-        
-            return osc;
-          }
-        },
 
         FM: {
           name: "FM",
@@ -88,7 +81,7 @@
             // Use Tone.FMOscillator for FM synthesis
             const fmo = new Tone.FMOscillator({
               frequency: freq,
-              harmonicity: 3,
+              harmonicity: 1,
               modulationIndex: 10,
               type: "sine"
             });
@@ -101,8 +94,35 @@
       const modeKeys = Object.keys(Modes);
       //const selectedModeKey = modeKeys[4];
       const selectedModeKey = modeKeys[Math.floor(Math.random() * modeKeys.length)];
-      const selectedMode = Modes[selectedModeKey];
-      console.log("Selected mode:", selectedMode.name);
+      //const selectedMode = Modes[selectedModeKey];
+      //console.log("Selected mode:", selectedMode.name);
+      function selectNewMode() {
+          let previousMode = null;
+      
+          function getRandomMode() {
+              let newModeKey;
+              do {
+                  newModeKey = modeKeys[Math.floor(Math.random() * modeKeys.length)];
+              } while (Modes[newModeKey] === previousMode); // Ensure it's different
+      
+              previousMode = Modes[newModeKey];
+              return previousMode;
+          }
+      
+          return getRandomMode;
+      }
+      
+      const getRandomMode = selectNewMode();
+      
+      // Select an initial random mode
+      let selectedMode = getRandomMode();
+      
+      function updateModeText()
+      {
+        document.getElementById("modename").innerHTML = "Mode: " + selectedMode.name;
+      }
+      
+      updateModeText();
       
 
       // --- Global Responsive Setup ---
@@ -160,7 +180,7 @@
       function animate() {
         requestAnimationFrame(animate);
         const time = Date.now() * 0.005;
-        const pulseScale = 1 + 0.2 * Math.sin(time);
+        const pulseScale = 2.5 + 0.5 * Math.sin(time);
 
         // Update scale of active touch indicators
         for (let key in activeTouches) {
@@ -177,8 +197,8 @@
 
       // --- Audio Helper Functions ---
       function getFrequency(x) {
-        const minFreq = 200;
-        const maxFreq = 1000;
+        const minFreq = 100;
+        const maxFreq = 650;
         return minFreq + (x / canvasSize) * (maxFreq - minFreq);
       }
 
@@ -334,6 +354,14 @@
       }
 
       window.addEventListener("resize", onWindowResize);
+      
+      // Change mode every 10 seconds
+      setInterval(() => {
+          selectedMode = getRandomMode();
+          updateModeText();
+      }, 10000);
+      
+      
     </script>
   </body>
 </html>
