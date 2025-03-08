@@ -99,8 +99,8 @@
 
       // Randomly select a mode at page load
       const modeKeys = Object.keys(Modes);
-      const selectedModeKey = modeKeys[4];
-      //const selectedModeKey = modeKeys[Math.floor(Math.random() * modeKeys.length)];
+      //const selectedModeKey = modeKeys[4];
+      const selectedModeKey = modeKeys[Math.floor(Math.random() * modeKeys.length)];
       const selectedMode = Modes[selectedModeKey];
       console.log("Selected mode:", selectedMode.name);
       
