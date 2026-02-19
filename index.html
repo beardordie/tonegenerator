@@ -498,7 +498,7 @@
         oscillator.start();
 
         const indicator = createIndicator();
-        indicator.position.set(pos.x, pos.y, 0);
+        indicator.position.set(pos.x, canvasSize - pos.y, 0);
         scene.add(indicator);
 
         activeTouches[touch.identifier] = { oscillator, gainNode, indicator };
@@ -512,7 +512,7 @@
         if (activeTouches[touch.identifier]) {
           activeTouches[touch.identifier].oscillator.frequency.value = freq;
           activeTouches[touch.identifier].gainNode.gain.value = volume;
-          activeTouches[touch.identifier].indicator.position.set(pos.x, pos.y, 0);
+          activeTouches[touch.identifier].indicator.position.set(pos.x, canvasSize - pos.y, 0);
         }
       }
 
@@ -590,7 +590,7 @@
         oscillator.start();
 
         const indicator = createIndicator();
-        indicator.position.set(pos.x, pos.y, 0);
+        indicator.position.set(pos.x, canvasSize - pos.y, 0);
         scene.add(indicator);
 
         mouseActive = { oscillator, gainNode, indicator };
@@ -604,7 +604,7 @@
         if (mouseActive) {
           mouseActive.oscillator.frequency.value = freq;
           mouseActive.gainNode.gain.value = volume;
-          mouseActive.indicator.position.set(pos.x, pos.y, 0);
+          mouseActive.indicator.position.set(pos.x, canvasSize - pos.y, 0);
         }
       }
 
