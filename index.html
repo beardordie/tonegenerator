@@ -463,15 +463,11 @@
 
       function getRelativePosition(clientX, clientY) {
         const rect = renderer.domElement.getBoundingClientRect();
+        // rect.left/top already account for canvas centering via flexbox
         let x = clientX - rect.left;
         let y = clientY - rect.top;
         
-        // Center the coordinate system
-        const offsetX = (container.clientWidth - canvasSize) / 2;
-        const offsetY = (container.clientHeight - canvasSize) / 2;
-        x = x - offsetX;
-        y = y - offsetY;
-        
+        // Clamp to canvas bounds
         x = Math.max(0, Math.min(canvasSize, x));
         y = Math.max(0, Math.min(canvasSize, y));
         
